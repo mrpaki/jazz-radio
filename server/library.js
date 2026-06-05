@@ -3,8 +3,9 @@ const fs   = require('fs');
 const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
 
-const DB_PATH     = path.join(__dirname, '../data/radio.db');
-const ARTWORK_DIR = path.join(__dirname, '../data/artwork');
+const DB_PATH       = path.join(__dirname, '../data/radio.db');
+const ARTWORK_DIR   = path.join(__dirname, '../data/artwork');
+const REMOTE_TRACKS = path.join(__dirname, '../remote-tracks.json');
 
 let _db = null;
 function db() {
@@ -12,15 +13,30 @@ function db() {
   return _db;
 }
 
+function loadRemoteTracks() {
+  if (!fs.existsSync(REMOTE_TRACKS)) return;
+  const tracks = JSON.parse(fs.readFileSync(REMOTE_TRACKS, 'utf8'));
+  const insert = db().prepare(`
+    INSERT OR IGNORE INTO tracks (url, title, artist, album, year, duration, has_artwork)
+    VALUES (?, ?, ?, ?, ?, ?, 0)
+  `);
+  for (const t of tracks) {
+    insert.run(t.url, t.title, t.artist, t.album || 'Public Domain Jazz', t.year || null, t.duration || 180);
+  }
+  console.log(`Remote tracks: ${tracks.length} loaded.`);
+}
+
 async function scanLibrary() {
   const musicDir = process.env.MUSIC_DIR
     ? path.resolve(process.env.MUSIC_DIR)
     : path.join(__dirname, '../music');
 
+  // Load remote tracks first (fallback playlist)
+  loadRemoteTracks();
+
   if (!fs.existsSync(musicDir)) {
     fs.mkdirSync(musicDir, { recursive: true });
-    console.log(`Music dir created: ${musicDir}`);
-    return [];
+    return getAllTracks();
   }
 
   const files = fs.readdirSync(musicDir)
@@ -28,8 +44,8 @@ async function scanLibrary() {
     .map(f => path.join(musicDir, f));
 
   if (!files.length) {
-    console.log('No audio files found. Add MP3s to /music.');
-    return [];
+    console.log('No local files. Using remote tracks.');
+    return getAllTracks();
   }
 
   const { parseFile } = await import('music-metadata');
@@ -43,7 +59,6 @@ async function scanLibrary() {
     try {
       const meta = await parseFile(filepath, { duration: true });
       const { common, format } = meta;
-
       const has_artwork = common.picture?.length ? 1 : 0;
 
       const result = insert.run(
@@ -59,16 +74,15 @@ async function scanLibrary() {
       if (has_artwork) {
         const pic = common.picture[0];
         const ext = (pic.format || 'image/jpeg').split('/').pop().replace('jpeg', 'jpg');
-        const id  = result.lastInsertRowid;
-        fs.writeFileSync(path.join(ARTWORK_DIR, `${id}.${ext}`), pic.data);
+        fs.writeFileSync(path.join(ARTWORK_DIR, `${result.lastInsertRowid}.${ext}`), pic.data);
       }
     } catch (err) {
       console.error(`Scan error [${path.basename(filepath)}]:`, err.message);
     }
   }
 
-  const tracks = db().prepare('SELECT * FROM tracks ORDER BY artist, title').all();
-  console.log(`Library: ${tracks.length} tracks indexed.`);
+  const tracks = getAllTracks();
+  console.log(`Library: ${tracks.length} tracks total.`);
   return tracks;
 }
 

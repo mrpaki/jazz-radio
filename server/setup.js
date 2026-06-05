@@ -14,7 +14,8 @@ const db = new DatabaseSync(DB_PATH);
 db.exec(`
   CREATE TABLE IF NOT EXISTS tracks (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    filepath    TEXT UNIQUE NOT NULL,
+    filepath    TEXT UNIQUE,
+    url         TEXT UNIQUE,
     title       TEXT,
     artist      TEXT,
     album       TEXT,

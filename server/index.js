@@ -31,7 +31,14 @@ if (HAS_BUILD) {
 // ─── Audio stream with Range support ───────────────────────────────────────
 app.get('/stream/:id', (req, res) => {
   const track = getTrackById(parseInt(req.params.id));
-  if (!track || !fs.existsSync(track.filepath)) return res.status(404).send('Not found');
+  if (!track) return res.status(404).send('Not found');
+
+  // Remote track — redirect to source URL
+  if (track.url && !track.filepath) {
+    return res.redirect(302, track.url);
+  }
+
+  if (!track.filepath || !fs.existsSync(track.filepath)) return res.status(404).send('Not found');
 
   const stat = fs.statSync(track.filepath);
   const ext  = path.extname(track.filepath).toLowerCase();
