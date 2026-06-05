@@ -2,10 +2,13 @@
   "name": "jazz-radio",
   "version": "1.0.0",
   "description": "Jazz 24 - 24/7 Online Jazz Radio Station",
+  "engines": {
+    "node": ">=22.5.0"
+  },
   "scripts": {
     "dev": "concurrently -k -n SERVER,CLIENT -c cyan,yellow \"nodemon server/index.js\" \"npm --prefix client run dev\"",
     "start": "NODE_ENV=production node server/index.js",
-    "build": "npm --prefix client run build",
+    "build": "npm --prefix client install && npm --prefix client run build",
     "setup": "node server/setup.js"
   },
   "dependencies": {
