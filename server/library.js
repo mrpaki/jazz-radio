@@ -14,16 +14,24 @@ function db() {
 }
 
 function loadRemoteTracks() {
-  if (!fs.existsSync(REMOTE_TRACKS)) return;
-  const tracks = JSON.parse(fs.readFileSync(REMOTE_TRACKS, 'utf8'));
-  const insert = db().prepare(`
-    INSERT OR IGNORE INTO tracks (url, title, artist, album, year, duration, has_artwork)
-    VALUES (?, ?, ?, ?, ?, ?, 0)
-  `);
-  for (const t of tracks) {
-    insert.run(t.url, t.title, t.artist, t.album || 'Public Domain Jazz', t.year || null, t.duration || 180);
+  console.log('Remote tracks path:', REMOTE_TRACKS);
+  if (!fs.existsSync(REMOTE_TRACKS)) {
+    console.log('remote-tracks.json NOT FOUND');
+    return;
   }
-  console.log(`Remote tracks: ${tracks.length} loaded.`);
+  try {
+    const tracks = JSON.parse(fs.readFileSync(REMOTE_TRACKS, 'utf8'));
+    const insert = db().prepare(`
+      INSERT OR IGNORE INTO tracks (url, title, artist, album, year, duration, has_artwork)
+      VALUES (?, ?, ?, ?, ?, ?, 0)
+    `);
+    for (const t of tracks) {
+      insert.run(t.url, t.title, t.artist, t.album || 'Public Domain Jazz', t.year || null, t.duration || 180);
+    }
+    console.log(`Remote tracks: ${tracks.length} loaded.`);
+  } catch (err) {
+    console.error('loadRemoteTracks error:', err.message);
+  }
 }
 
 async function scanLibrary() {

@@ -109,7 +109,11 @@ if (HAS_BUILD) {
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 (async () => {
+  console.log('Node version:', process.version);
+  console.log('Working dir:', process.cwd());
   await scanLibrary();
+  const tracks = getAllTracks();
+  console.log(`Tracks in DB: ${tracks.length}`);
   startStreamer(io);
   server.listen(PORT, () => console.log(`\n🎷 Jazz 24 Radio → http://localhost:${PORT}\n`));
 })().catch(console.error);
